@@ -7,9 +7,8 @@ using WebApi.Entities;
 
 namespace WebApi.Controllers
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class UsersController : ControllerBase
+    
+    public class UsersController : BaseApiController
     {
         private readonly DataContext _context;
 
