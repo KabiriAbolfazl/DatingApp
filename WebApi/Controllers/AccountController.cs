@@ -7,20 +7,23 @@ using System.Threading.Tasks;
 using WebApi.Data;
 using WebApi.DTOs;
 using WebApi.Entities;
+using WebApi.Interfaces;
 
 namespace WebApi.Controllers
 {
     public class AccountController:BaseApiController
     {
         private readonly DataContext _context;
+        private readonly ITokenService _tokenService;
 
-        public AccountController(DataContext context)
+        public AccountController(DataContext context,ITokenService tokenService)
         {
             _context = context;
+            _tokenService = tokenService;
         }
 
         [HttpPost("register")]
-        public async Task<ActionResult<AppUser>> Register(RegisterDto registerDto)
+        public async Task<ActionResult<UserDto>> Register(RegisterDto registerDto)
         {
             if (await IsUsernameExists(registerDto.Username)) return BadRequest("Username is taken");
             using var hmac = new HMACSHA512();
@@ -32,7 +35,11 @@ namespace WebApi.Controllers
             };
             _context.Users.Add(appUser);
             await _context.SaveChangesAsync();
-            return appUser;
+            return new UserDto
+            {
+                UserName = registerDto.Username,
+                Token = _tokenService.CreateToken(appUser)
+            };
         }
 
         private async Task<bool> IsUsernameExists(string username)
@@ -41,7 +48,7 @@ namespace WebApi.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<ActionResult<AppUser>> Login(LoginDto loginDto)
+        public async Task<ActionResult<UserDto>> Login(LoginDto loginDto)
         {
             var appUser = await _context.Users
                 .SingleOrDefaultAsync(x=> x.UserName.Equals(loginDto.Username));
@@ -57,7 +64,11 @@ namespace WebApi.Controllers
                 if(computedHash[i] != appUser.PasswordHash[i]) return Unauthorized("password invalid");
             }
 
-            return appUser;
+            return new UserDto
+            {
+                UserName = appUser.UserName,
+                Token = _tokenService.CreateToken(appUser)
+            };
         }
     }
 }
